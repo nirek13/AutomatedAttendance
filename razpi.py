@@ -1,51 +1,50 @@
 
-   
+import sys
 from cv2 import imread
 import numpy as np
 import cv2
-
+import qrcode
 import face_recognition 
 import face_recognition as fr
 
 import os
 
+### FACIAL RECOGNITION
 
+MODE = "QR" # FACIAL or QR
 
 
 def get_encoded_faces():
     """
     looks through the faces folder and encodes all
     the faces
-
     :return: dict of (name, image encoded)
     """
     encoded = {}
 
-    for dirpath, dnames, fnames in os.walk("./faces"):
+            
+    for dirpath, dnames, fnames in os.walk("./FacialAttendance"):
         for f in fnames:
             if f.endswith(".jpg") or f.endswith(".png"):
-                face = fr.load_image_file("faces/" + f)
+                face = fr.load_image_file("FacialAttendance/" + f)
                 encoding = fr.face_encodings(face)[0]
                 encoded[f.split(".")[0]] = encoding
 
     return encoded
 
-
 def unknown_image_encoded(img):
     """
     encode a face given the file name
     """
-    face = fr.load_image_file("faces/" + img)
+    face = fr.load_image_file("FacialAttendance/" + img)
     encoding = fr.face_encodings(face)[0]
 
     return encoding
-
 
 def classify_face(im):
     """
     will find all of the faces in a given image and label
     them if it knows what they are
-
     :param im: str of file path
     :return: list of face names
     """
@@ -91,40 +90,104 @@ def classify_face(im):
         if not cv2.waitKey(1) & 0xFF == ord('q'):
             return face_names 
 
-present = []
-class people:
-    def __init__(self):
-        self.present = False
-    def arrived(self):
-        self.present = True
+### QR CODE READER
+
+def QRReader(img):
+    im = cv2.imread(img)
+    det = cv2.QRCodeDetector()
+    retval, points, straight_qrcode = det.detectAndDecode(im)
+    return retval
+
+def get_people(mode = MODE):
+    """
+    looks through the faces folder and qr folder  and encodes all
+    the faces + qr codes
+    :return: dict of (name, image encoded)
+    """
+
+    if mode == "QR":
         
-class CLASS:
-    def __init__(self , numpeople , pplnm):
-        self.npeople = numpeople
-        self.names = pplnm
-        self.absent = numpeople
-        self.present = 0
-    def mpresent(self):
-        self.present += 1
-
-cap = cv2.VideoCapture(0)
-img = imread('cur.jpg')
-i = 0
-while True:
+        encoded = {}
     
-    nirek = people()
-    ret, frame = cap.read() 
-    cv2.imshow('frame', frame)
-    cv2.imwrite("cur.jpg", frame)
-    ppl = classify_face("cur.jpg")
-    if "nirek" in ppl:
-        nirek.arrived()
-        if "nirek" not in present:
-            present.append("nirek")
-    print(present)
+        for dirpath, dnames, fnames in os.walk("./QRAttendance"):
+            for f in fnames:
+                if f.endswith(".jpg") or f.endswith(".png"):
+                    face = fr.load_image_file("QRAttendance/" + f)
+                    encoding = fr.face_encodings(face)[0]
+                    encoded[f.split(".")[0]] = encoding
 
-    
+            return encoded
+    else :
+        
+        encoded = {}
+        
+        for dirpath, dnames, fnames in os.walk("./FacialAttendance"):
+            for f in fnames:
+                if f.endswith(".jpg") or f.endswith(".png"):
+                    face = fr.load_image_file("FacialAttendance/" + f)
+                    encoding = fr.face_encodings(face)[0]
+                    encoded[f.split(".")[0]] = encoding
 
+        return encoded
+
+def QRCreator(classList):
+    """Takes in an input of people seperated by commas"""
+
+    classNames = []
+    qrcodes = []
+    y = 0
+    print(len(classList))
+
+    for i in range(len(classList)):
+        
+        if classList[i] != ",":
+            classNames.append([])
+            classNames[y] += classList[i]
+        else:
+
+            y += 1
+
+    for name in classList:
+        qrcodes.append(qrcode.make(name))
+        img = qrcode.make(name)
+        img.save(f"QRAttendance/{name}.png" , "PNG")
+        os.system(f"open QRAttendance/{name}.png", "PNG" )
+
+
+   
+while True: 
+
+    if MODE == "QR":
+        if get_people(MODE) == {}:
+            print("No QR codes found")
+            print("Please enter the names of the people in the class seperated by commas")
+            classList = input()
+            QRCreator(classList)
+        else:
+            cap = cv2.VideoCapture(0)
+            ret, frame = cap.read() 
+            cv2.imwrite("cur.jpg", frame)
+            person = QRReader("cur.jpg")
+            print(person)
+    else:
+        if get_people("FACIAL") == {}:
+            print("No faces found")
+            print("Please enter the names of the people in the class seperated by commas")
+            classList = input()
+            QRCreator(classList)
+        else:
+            cap = cv2.VideoCapture(0)
+            ret, frame = cap.read() 
+            cv2.imwrite("cur.jpg", frame)
+            person = classify_face("cur.jpg")
+            print(person)
+
+            
+
+
+
+
+
+print(people)
 cap.release()
 cv2.destroyAllWindows()
-
